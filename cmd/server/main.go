@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"embed"
+	"html/template"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,8 +13,12 @@ import (
 
 	"github.com/Mackintac/goMonitor/internal/alert"
 	"github.com/Mackintac/goMonitor/internal/db"
+	"github.com/Mackintac/goMonitor/internal/handler"
 	"github.com/Mackintac/goMonitor/internal/monitor"
 )
+
+//go:embed templates
+var templateFiles embed.FS
 
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
@@ -59,6 +66,16 @@ func main() {
 				Enabled:       true,
 				AlertCooldown: 15 * time.Minute,
 			},
+
+			{
+				Name:          "DiceRollDuel",
+				URL:           "https://dicerollduel.com",
+				Type:          monitor.TypeHTTP,
+				Interval:      30 * time.Second,
+				Timeout:       5 * time.Second,
+				Enabled:       true,
+				AlertCooldown: 15 * time.Minute,
+			},
 		}
 		for _, m := range seeds {
 			id, err := database.CreateMonitor(m)
@@ -92,6 +109,30 @@ func main() {
 
 	engine := monitor.NewEngine(database, alerter, monitors)
 	engine.Start(ctx)
+
+	// ---- HTTP Server ----
+	tmpl, err := template.ParseFS(templateFiles, "templates/dashboard.html")
+	if err != nil {
+		log.Fatalf("parse templates: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	h := handler.New(database, tmpl)
+	handler.RegisterRoutes(mux, h)
+
+	srv := &http.Server{
+		Addr:         envOr("ADDR", ":8080"),
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	go func() {
+		log.Printf("server listening on %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %v", err)
+		}
+	}()
 
 	// ---- Graceful shutdown ----
 	quit := make(chan os.Signal, 1)

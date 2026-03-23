@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>goMonitor</title>
+    <style>
+      body {
+        font-family: monospace;
+        background: #0d0f12;
+        color: #e2e4ea;
+        padding: 2rem;
+      }
+      h1 {
+        margin-bottom: 2rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        text-align: left;
+        padding: 0.5rem 1rem;
+        color: #6b7080;
+        border-bottom: 1px solid #2a2d38;
+      }
+      td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #2a2d38;
+      }
+      .up {
+        color: #22c55e;
+        font-weight: bold;
+      }
+      .down {
+        color: #ef4444;
+        font-weight: bold;
+      }
+      .muted {
+        color: #6b7080;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>⬆ goMonitor</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>URL</th>
+          <th>Status</th>
+          <th>Response Time</th>
+          <th>Last Checked</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Monitors}}
+        <tr>
+          <td>{{.Monitor.Name}}</td>
+          <td class="muted">{{.Monitor.URL}}</td>
+          <td>
+            {{if .Last}} {{if .Last.Up}}
+            <span class="up">UP</span>
+            {{else}}
+            <span class="down">DOWN</span>
+            {{end}} {{else}}
+            <span class="muted">pending</span>
+            {{end}}
+          </td>
+          <td class="muted">
+            {{if .Last}}{{.Last.ResponseTime}}ms{{else}}—{{end}}
+          </td>
+          <td class="muted">
+            {{if .Last}}{{.Last.CheckedAt.Format "15:04:05"}}{{else}}—{{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </body>
+</html>
